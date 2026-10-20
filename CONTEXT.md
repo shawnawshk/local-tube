@@ -53,6 +53,7 @@
 - **顶栏**:不要。只有系统标题栏(左边文件名,右上角列表开关),下面直接是播放页。
 - **列表开关**(2026-10-20 追加):播放列表默认关闭,用标题栏右上角的开关打开,开关状态记住到下次启动。剧场模式下列表不显示;这时点开关会退出剧场模式并打开列表。不加快捷键。
 - **分界线**(2026-10-20 追加):播放器和列表之间可以拖动调比例,比例记住。列表最窄 280pt,播放器最窄 480pt。
+- **窗口高度跟着内容走**(2026-10-20 追加):宽度由用户拉,高度自动等于「16:9 播放器 + 标题信息 + 上下留白」,不留空。拖窗口边框时按比例缩放;开关列表、拖分界线、切剧场模式、换视频时重算高度,窗口顶边不动。算出来超过屏幕高度就自动收窄。开列表时窗口宽度不变,播放器变窄、窗口跟着变矮。播放器固定 16:9,竖屏或 4:3 视频在播放器里留黑边。
 - **播放器下方**:大字标题(文件名,不带扩展名)+ 一行小字:文件夹名 · 时长 · 修改日期 · 分辨率。
 - **界面语言**:英文,用词照 YouTube 英文版:Playback speed / Normal / Custom / Autoplay / Up next / Cancel / Play now。
 - **App 图标**:红色圆角方块 + 白色播放三角,SVG 画好转成 .icns。
@@ -143,7 +144,8 @@
 
 ## 9. 构建与安装
 
-- 单元测试:`xcodebuild -project LocalTube.xcodeproj -scheme LocalTube -derivedDataPath build/DerivedData test`
+- 单元测试:`xcodebuild -project LocalTube.xcodeproj -scheme LocalTube -derivedDataPath build/DerivedData test`。锁屏时测试宿主 app 退不出来,xcodebuild 会一直挂着(2026-10-20 实测),要在解锁状态下跑。
+- Debug 版的 bundle ID 是 `local.LocalTube.debug`,跟装在 /Applications 的正式版(`local.LocalTube`)分开存设置和进度。测试只碰 Debug 的数据,不要去动 `local.LocalTube`。
 - 装到 /Applications:`./scripts/install.sh`(Release 构建、本地签名,会先退出正在运行的 LocalTube)
 - 改图标:编辑 `scripts/AppIcon.svg`,再跑 `./scripts/make-icon.sh`
 - build 目录里的副本被系统登记后,Finder「打开方式」里会出现重复项。用 `lsregister -u <路径>` 移除(`lsregister` 在 `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/`)。

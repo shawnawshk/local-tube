@@ -49,6 +49,8 @@ final class PlayerModel {
     var unsupportedFile: URL?
 
     @ObservationIgnored weak var window: NSWindow?
+    @ObservationIgnored private let windowFitter = WindowFitter()
+    @ObservationIgnored private var infoHeight: CGFloat = 60
     @ObservationIgnored var isMouseInPlayer = false
     @ObservationIgnored private var pip: AVPictureInPictureController?
     @ObservationIgnored private var pendingSeek: Double?
@@ -138,6 +140,7 @@ final class PlayerModel {
         cancelCountdown()
         self.url = url
         self.duration = duration
+        fitWindow()
         playlist = FolderPlaylist.videos(inFolderOf: url)
         info = nil
         hasEnded = false
@@ -296,7 +299,10 @@ final class PlayerModel {
 
     var showsControls: Bool { controlsVisible || !isPlaying || isSettingsOpen }
 
-    func toggleTheater() { isTheater.toggle() }
+    func toggleTheater() {
+        isTheater.toggle()
+        fitWindow()
+    }
 
     /// The list is hidden in theater mode, so asking for it there leaves theater mode.
     func togglePlaylist() {
@@ -307,11 +313,13 @@ final class PlayerModel {
             showsPlaylist.toggle()
         }
         defaults.set(showsPlaylist, forKey: "showsPlaylist")
+        fitWindow()
     }
 
     func setPlaylistFraction(_ fraction: Double) {
         playlistFraction = fraction
         defaults.set(fraction, forKey: "playlistFraction")
+        fitWindow()
     }
 
     func toggleFullscreen() { window?.toggleFullScreen(nil) }
@@ -329,8 +337,27 @@ final class PlayerModel {
             MainActor.assumeIsolated { self?.isFullscreen = true }
         }
         center.addObserver(forName: NSWindow.didExitFullScreenNotification, object: window, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.isFullscreen = false }
+            MainActor.assumeIsolated {
+                self?.isFullscreen = false
+                self?.fitWindow()
+            }
         }
+        windowFitter.attach(window) { [weak self] width in self?.contentHeight(forWidth: width) }
+    }
+
+    /// The title block can wrap, so the view reports its real height.
+    func setInfoHeight(_ height: CGFloat) {
+        guard abs(height - infoHeight) > 0.5 else { return }
+        infoHeight = height
+        fitWindow()
+    }
+
+    func fitWindow() { windowFitter.fit() }
+
+    private func contentHeight(forWidth width: CGFloat) -> CGFloat? {
+        guard url != nil, !isFullscreen else { return nil }
+        return WatchLayout.contentHeight(contentWidth: width, showsList: showsPlaylist && !isTheater,
+                                         theater: isTheater, listFraction: playlistFraction, infoHeight: infoHeight)
     }
 
     func attach(playerLayer: AVPlayerLayer) {

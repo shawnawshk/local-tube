@@ -122,6 +122,34 @@ struct SplitLayoutTests {
     }
 }
 
+struct WatchLayoutTests {
+    @Test func playerTakesTheInnerWidthWithoutTheList() {
+        #expect(WatchLayout.playerWidth(contentWidth: 960, showsList: false, theater: false, listFraction: 0.3) == 912)
+        #expect(WatchLayout.playerWidth(contentWidth: 960, showsList: true, theater: true, listFraction: 0.3) == 960)
+    }
+
+    @Test func listTakesItsShareFromThePlayer() {
+        // 1600 - 48 padding - 24 divider = 1528 shared; 30% list = 458.4
+        #expect(WatchLayout.playerWidth(contentWidth: 1600, showsList: true, theater: false, listFraction: 0.3) == 1528 - 458.4)
+    }
+
+    @Test func heightFitsPlayerAndInfoExactly() {
+        // Plain numbers: written as a sum of integer literals, #expect reported false with both sides printing 633.
+        // 24 top + 513 player (912 * 9/16) + 12 + 60 info + 24 bottom
+        #expect(WatchLayout.contentHeight(contentWidth: 960, showsList: false, theater: false, listFraction: 0.3,
+                                          infoHeight: 60) == 633)
+        // Theater: no top padding, player spans the whole width. 540 + 12 + 60 + 24
+        #expect(WatchLayout.contentHeight(contentWidth: 960, showsList: false, theater: true, listFraction: 0.3,
+                                          infoHeight: 60) == 636)
+    }
+
+    @Test func openingTheListMakesTheWindowShorter() {
+        let closed = WatchLayout.contentHeight(contentWidth: 1200, showsList: false, theater: false, listFraction: 0.3, infoHeight: 60)
+        let open = WatchLayout.contentHeight(contentWidth: 1200, showsList: true, theater: false, listFraction: 0.3, infoHeight: 60)
+        #expect(open < closed)
+    }
+}
+
 struct ShortcutTests {
     private func action(_ keyCode: UInt16, _ chars: String = "", _ mods: NSEvent.ModifierFlags = []) -> ShortcutAction? {
         ShortcutAction.from(keyCode: keyCode, characters: chars, modifiers: mods)

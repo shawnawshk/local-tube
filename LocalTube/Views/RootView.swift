@@ -12,7 +12,7 @@ struct RootView: View {
                 WatchView()
             }
         }
-        .frame(minWidth: 960, minHeight: 600)
+        .frame(minWidth: 960, minHeight: model.url == nil ? 600 : 300)
         .background(Theme.background)
         .preferredColorScheme(.dark)
         .navigationTitle(model.title ?? "LocalTube")
@@ -68,8 +68,7 @@ struct EmptyStateView: View {
 struct WatchView: View {
     @Environment(PlayerModel.self) private var model
 
-    private static let gap: CGFloat = 24
-    private static let infoHeight: CGFloat = 96
+    private static let gap = WatchLayout.padding
 
     var body: some View {
         GeometryReader { geo in
@@ -80,21 +79,22 @@ struct WatchView: View {
             // Player + list share the width left after the outer padding and the divider.
             let available = geo.size.width - padding * 2 - Self.gap
             let listWidth = SplitLayout.listWidth(fraction: model.playlistFraction, available: available)
-            let playerWidth = fullscreen || theater
+            let playerWidth = fullscreen
                 ? geo.size.width
-                : showsList ? available - listWidth : geo.size.width - padding * 2
-            let playerHeight = fullscreen
-                ? geo.size.height
-                : min(playerWidth * 9 / 16, geo.size.height - padding - Self.infoHeight)
+                : WatchLayout.playerWidth(contentWidth: geo.size.width, showsList: showsList, theater: theater,
+                                          listFraction: model.playlistFraction)
+            // The window is sized to fit (WindowFitter); the cap only matters mid-resize.
+            let playerHeight = fullscreen ? geo.size.height : min(playerWidth * 9 / 16, geo.size.height)
 
             HStack(alignment: .top, spacing: 0) {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: WatchLayout.infoSpacing) {
                     PlayerView()
                         .frame(width: playerWidth, height: playerHeight)
                         .clipShape(RoundedRectangle(cornerRadius: fullscreen || theater ? 0 : 12))
                     if !fullscreen {
                         VideoInfoView()
                             .padding(.horizontal, theater ? Self.gap : 0)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { model.setInfoHeight($0) }
                     }
                 }
                 if showsList {
