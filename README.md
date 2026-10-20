@@ -1,6 +1,6 @@
 # LocalTube
 
-[![macOS 15+](https://img.shields.io/badge/macOS-15%2B-000000?logo=apple)](#requirements)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple)](#requirements)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-AVFoundation-F05138?logo=swift&logoColor=white)](#project-layout)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -55,8 +55,8 @@ Click the video to play or pause; double-click for full screen.
 
 ## Requirements
 
-- macOS 15 or later
-- Xcode 16 or later. The project uses Xcode 16's file-system-synchronized groups; it is developed with Xcode 27.1 on Apple silicon.
+- macOS 14 or later
+- Xcode 15.4 or later. The project lists its files explicitly, so a new source file has to be added to the project in Xcode.
 
 ## Build and install
 
@@ -101,7 +101,7 @@ xcodebuild -project LocalTube.xcodeproj -scheme LocalTube -derivedDataPath build
 │   ├── Model/               # player state, folder playlist, watch progress, speed and layout rules
 │   ├── Views/               # watch page, player, control bar, speed menu, Up next list
 │   └── Assets.xcassets      # app icon
-├── LocalTubeTests/          # unit tests (Swift Testing)
+├── LocalTubeTests/          # unit tests (XCTest)
 ├── Support/Info.plist       # document types for Finder's "Open With"
 ├── scripts/                 # install.sh, make-icon.sh, AppIcon.svg
 ├── docs/adr/                # architecture decision records (Chinese)

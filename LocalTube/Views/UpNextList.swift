@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Right-hand list: every supported video in the current folder, current one highlighted.
+@MainActor
 struct UpNextList: View {
     @Environment(PlayerModel.self) private var model
 
@@ -34,6 +35,7 @@ struct UpNextList: View {
     }
 }
 
+@MainActor
 struct UpNextRow: View {
     @Environment(PlayerModel.self) private var model
     let url: URL

@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 struct RootView: View {
     @Environment(PlayerModel.self) private var model
 
@@ -45,6 +46,7 @@ struct RootView: View {
     }
 }
 
+@MainActor
 struct EmptyStateView: View {
     @Environment(PlayerModel.self) private var model
 
@@ -65,6 +67,7 @@ struct EmptyStateView: View {
 }
 
 /// YouTube watch page: player + info on the left, Up next on the right when switched on.
+@MainActor
 struct WatchView: View {
     @Environment(PlayerModel.self) private var model
 
@@ -94,7 +97,11 @@ struct WatchView: View {
                     if !fullscreen {
                         VideoInfoView()
                             .padding(.horizontal, theater ? Self.gap : 0)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { model.setInfoHeight($0) }
+                            .background(GeometryReader { info in
+                                Color.clear
+                                    .onAppear { model.setInfoHeight(info.size.height) }
+                                    .onChange(of: info.size.height) { model.setInfoHeight($1) }
+                            })
                     }
                 }
                 if showsList {
@@ -117,6 +124,7 @@ struct WatchView: View {
 }
 
 /// The line between player and list; drag it to change their ratio.
+@MainActor
 struct SplitDivider: View {
     static let space = "watch"
 
@@ -132,8 +140,10 @@ struct SplitDivider: View {
             .frame(width: width)
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
-            .pointerStyle(.columnResize)
-            .onHover { hovering = $0 }
+            .onHover { inside in
+                hovering = inside
+                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+            }
             .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .named(Self.space))
                 .onChanged { value in
                     dragging = true
@@ -144,6 +154,7 @@ struct SplitDivider: View {
 }
 
 /// Title + one line of file facts under the player.
+@MainActor
 struct VideoInfoView: View {
     @Environment(PlayerModel.self) private var model
 
@@ -174,6 +185,7 @@ struct VideoInfoView: View {
 }
 
 /// Hands the hosting NSWindow to the model (fullscreen state, key event filtering).
+@MainActor
 struct WindowReader: NSViewRepresentable {
     let onWindow: (NSWindow) -> Void
 
