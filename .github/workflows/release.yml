@@ -1,0 +1,33 @@
+# Pushing a tag like v0.1.0 tests the app, builds LocalTube-0.1.0.dmg
+# and publishes it as a GitHub Release. Nothing runs on ordinary pushes.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the release
+
+jobs:
+  dmg:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+
+      - name: Test
+        run: xcodebuild -project LocalTube.xcodeproj -scheme LocalTube -derivedDataPath build/DerivedData test
+
+      - name: Build DMG
+        run: ./scripts/make-dmg.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "build/LocalTube-${GITHUB_REF_NAME#v}.dmg" \
+            --title "LocalTube $GITHUB_REF_NAME" --generate-notes

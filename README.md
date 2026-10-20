@@ -7,13 +7,14 @@
 A native macOS player for local video files that looks and handles like a YouTube watch page: adjustable playback speed, YouTube's keyboard shortcuts, and an "Up next" list built from the video's folder.
 
 > [!NOTE]
-> LocalTube is a personal project. There are no prebuilt or notarized downloads; you build it from source with Xcode.
+> LocalTube is a personal project. Prebuilt DMGs are ad-hoc signed and **not notarized**, so macOS blocks them until you remove the quarantine flag (see [Download](#download)).
 
 ## Contents
 
 - [Features](#features)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Requirements](#requirements)
+- [Download](#download)
 - [Build and install](#build-and-install)
 - [Limitations](#limitations)
 - [Project layout](#project-layout)
@@ -58,6 +59,18 @@ Click the video to play or pause; double-click for full screen.
 - macOS 15 or later
 - Xcode 16 or later. The project uses Xcode 16's file-system-synchronized groups; it is developed with Xcode 27.1 on Apple silicon.
 
+## Download
+
+1. Download `LocalTube-<version>.dmg` from [Releases](https://github.com/shawnawshk/local-tube/releases). It runs on Apple silicon and Intel Macs.
+2. Open the DMG and drag **LocalTube** onto **Applications**.
+3. Because the app is not notarized, macOS refuses to open it the first time. Clear the quarantine flag once:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/LocalTube.app
+   ```
+
+   Or try to open it once, then click **Open Anyway** in **System Settings › Privacy & Security**.
+
 ## Build and install
 
 ```bash
@@ -69,7 +82,7 @@ cd local-tube
 > [!WARNING]
 > `install.sh` builds the Release configuration, quits LocalTube if it is running, and **replaces** `/Applications/LocalTube.app`.
 
-The app is ad-hoc signed, which is fine on the Mac that built it but not for handing the app to someone else.
+The app is ad-hoc signed. A copy you build yourself opens without the quarantine step above.
 
 To make LocalTube the default player, select a video in Finder, choose **File › Get Info**, pick LocalTube under **Open with**, and click **Change All…**.
 
@@ -85,11 +98,22 @@ xcodebuild -project LocalTube.xcodeproj -scheme LocalTube -derivedDataPath build
 - Run the tests with the screen unlocked; with the screen locked the test host app never quits and `xcodebuild` hangs.
 - To change the app icon, edit `scripts/AppIcon.svg` and run `./scripts/make-icon.sh`.
 
+### Releasing
+
+Push a version tag; [`.github/workflows/release.yml`](.github/workflows/release.yml) runs the tests, builds `LocalTube-<version>.dmg` with `scripts/make-dmg.sh` and publishes it as a GitHub Release. The version number comes from the tag.
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+To build the same DMG locally: `./scripts/make-dmg.sh 0.2.0` (output in `build/`).
+
 ## Limitations
 
 - **Formats**: mp4, mov and m4v only. Playback uses AVFoundation, which cannot open webm, mkv, avi or flv ([ADR-001](docs/adr/ADR-001-playback-engine.md)).
 - No subtitles.
-- Not sandboxed, because the Up next list reads the whole folder of the video you open ([ADR-003](docs/adr/ADR-003-self-use-no-sandbox.md)). Not notarized.
+- Not sandboxed, because the Up next list reads the whole folder of the video you open ([ADR-003](docs/adr/ADR-003-self-use-no-sandbox.md)). Not notarized, so downloaded copies need the quarantine step in [Download](#download).
 - One window. Videos in subfolders are not listed.
 
 ## Project layout
@@ -103,7 +127,8 @@ xcodebuild -project LocalTube.xcodeproj -scheme LocalTube -derivedDataPath build
 │   └── Assets.xcassets      # app icon
 ├── LocalTubeTests/          # unit tests (Swift Testing)
 ├── Support/Info.plist       # document types for Finder's "Open With"
-├── scripts/                 # install.sh, make-icon.sh, AppIcon.svg
+├── scripts/                 # install.sh, make-dmg.sh, make-icon.sh, AppIcon.svg
+├── .github/workflows/       # release.yml: tag → tests → DMG → GitHub Release
 ├── docs/adr/                # architecture decision records (Chinese)
 └── CONTEXT.md               # design context and glossary (Chinese)
 ```
