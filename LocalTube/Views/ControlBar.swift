@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// YouTube control bar: progress bar on top, buttons below, dark gradient behind.
+@MainActor
 struct ControlBar: View {
     @Environment(PlayerModel.self) private var model
 
@@ -49,6 +50,7 @@ struct ControlBar: View {
     }
 }
 
+@MainActor
 struct BarButton: View {
     let symbol: String
     let help: String
@@ -68,6 +70,7 @@ struct BarButton: View {
 }
 
 /// Speaker button; the slider slides out on hover, like YouTube.
+@MainActor
 struct VolumeControl: View {
     @Environment(PlayerModel.self) private var model
     @State private var hovering = false
@@ -104,6 +107,7 @@ struct VolumeControl: View {
     }
 }
 
+@MainActor
 struct AutoplayToggle: View {
     @Environment(PlayerModel.self) private var model
 
@@ -133,6 +137,7 @@ struct AutoplayToggle: View {
 }
 
 /// Red played part, lighter hover part, scrubber dot and hover preview frame.
+@MainActor
 struct ProgressBar: View {
     @Environment(PlayerModel.self) private var model
     @State private var hoverX: CGFloat?
@@ -199,6 +204,7 @@ struct ProgressBar: View {
     }
 }
 
+@MainActor
 struct HoverPreview: View {
     static let width: CGFloat = 160
     let image: CGImage?

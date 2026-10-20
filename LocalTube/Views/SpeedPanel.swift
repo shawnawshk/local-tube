@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// The gear menu. Like YouTube: "Playback speed  Normal ›", then the speed list with a Custom slider.
+@MainActor
 struct SpeedPanel: View {
     @Environment(PlayerModel.self) private var model
     @State private var showingSpeeds = false

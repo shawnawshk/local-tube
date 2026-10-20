@@ -77,7 +77,7 @@ final class PlayerModel {
         }
         observations.append(player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             let playing = player.timeControlStatus != .paused
-            Task { @MainActor in self?.playingChanged(playing) }
+            Task { @MainActor [weak self] in self?.playingChanged(playing) }
         })
         NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification, object: nil, queue: .main
@@ -365,7 +365,7 @@ final class PlayerModel {
               let pip = AVPictureInPictureController(playerLayer: playerLayer) else { return }
         observations.append(pip.observe(\.isPictureInPictureActive, options: [.new]) { [weak self] pip, _ in
             let active = pip.isPictureInPictureActive
-            Task { @MainActor in self?.isPictureInPicture = active }
+            Task { @MainActor [weak self] in self?.isPictureInPicture = active }
         })
         self.pip = pip
     }

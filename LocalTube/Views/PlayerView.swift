@@ -3,6 +3,7 @@ import AppKit
 import SwiftUI
 
 /// Video + everything layered on it: feedback, autoplay card, control bar, settings panel.
+@MainActor
 struct PlayerView: View {
     @Environment(PlayerModel.self) private var model
 
@@ -44,6 +45,7 @@ struct PlayerView: View {
 }
 
 /// AVPlayerLayer host. Click toggles play, double click toggles fullscreen (YouTube behavior).
+@MainActor
 struct VideoSurface: NSViewRepresentable {
     @Environment(PlayerModel.self) private var model
 
@@ -88,6 +90,7 @@ struct VideoSurface: NSViewRepresentable {
     }
 }
 
+@MainActor
 struct ReplayButton: View {
     @Environment(PlayerModel.self) private var model
 
@@ -106,6 +109,7 @@ struct ReplayButton: View {
 }
 
 /// YouTube's end-of-video card: next video, a countdown ring, Cancel / Play now.
+@MainActor
 struct AutoplayCountdown: View {
     @Environment(PlayerModel.self) private var model
     @State private var nextInfo: VideoInfo?
@@ -173,6 +177,7 @@ struct AutoplayCountdown: View {
 }
 
 /// Center icon on play/pause, side "5 seconds" on seek, top pill for volume / speed.
+@MainActor
 struct OSDView: View {
     @Environment(PlayerModel.self) private var model
 
@@ -238,6 +243,7 @@ struct OSDView: View {
     }
 }
 
+@MainActor
 struct Thumbnail: View {
     let image: CGImage?
 
