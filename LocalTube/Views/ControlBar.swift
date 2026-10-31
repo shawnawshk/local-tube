@@ -9,6 +9,9 @@ struct ControlBar: View {
         VStack(spacing: 0) {
             ProgressBar()
             HStack(spacing: 2) {
+                BarButton(symbol: "backward.end.fill", help: "Previous (SHIFT+p)") { model.playPrevious() }
+                    .disabled(model.previousURL == nil)
+                    .opacity(model.previousURL == nil ? 0.4 : 1)
                 BarButton(symbol: model.hasEnded ? "arrow.counterclockwise" : model.isPlaying ? "pause.fill" : "play.fill",
                           help: model.hasEnded ? "Replay" : model.isPlaying ? "Pause (k)" : "Play (k)") {
                     model.togglePlay(feedback: false)

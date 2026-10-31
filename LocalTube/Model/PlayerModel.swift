@@ -19,6 +19,11 @@ struct OSD: Equatable {
 @MainActor
 @Observable
 final class PlayerModel {
+    /// Which list the Up next panel shows.
+    enum ListTab: String {
+        case folder, recent
+    }
+
     static let shared = PlayerModel()
     static let countdownSeconds = 5.0
 
@@ -40,6 +45,7 @@ final class PlayerModel {
     private(set) var isTheater = false
     private(set) var showsPlaylist: Bool
     private(set) var playlistFraction: Double
+    private(set) var listTab: ListTab
     private(set) var isFullscreen = false
     private(set) var isPictureInPicture = false
     private(set) var countdownStart: Date?
@@ -69,6 +75,7 @@ final class PlayerModel {
         autoplay = stored.object(forKey: "autoplay") as? Bool ?? true
         showsPlaylist = stored.bool(forKey: "showsPlaylist")
         playlistFraction = stored.object(forKey: "playlistFraction") as? Double ?? SplitLayout.defaultListFraction
+        listTab = stored.string(forKey: "listTab").flatMap(ListTab.init) ?? .folder
         player.volume = Float(volume)
         player.defaultRate = Float(speed)
 
@@ -260,6 +267,25 @@ final class PlayerModel {
         if let previous = previousURL { open(previous) }
     }
 
+    /// Back to the start screen. The video is saved and closed, so it tops Recent.
+    func goHome() {
+        guard url != nil else { return }
+        pause()
+        cancelCountdown()
+        if pip?.isPictureInPictureActive == true { pip?.stopPictureInPicture() }
+        loadToken = UUID() // a video still opening must not show up afterwards
+        player.replaceCurrentItem(with: nil)
+        url = nil
+        playlist = []
+        info = nil
+        preview = nil
+        duration = 0
+        currentTime = 0
+        hasEnded = false
+        isSettingsOpen = false
+        fitWindow()
+    }
+
     func cancelCountdown() {
         countdownTask?.cancel()
         countdownTask = nil
@@ -320,6 +346,11 @@ final class PlayerModel {
         playlistFraction = fraction
         defaults.set(fraction, forKey: "playlistFraction")
         fitWindow()
+    }
+
+    func setListTab(_ tab: ListTab) {
+        listTab = tab
+        defaults.set(tab.rawValue, forKey: "listTab")
     }
 
     func toggleFullscreen() { window?.toggleFullScreen(nil) }

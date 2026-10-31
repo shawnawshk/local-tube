@@ -23,14 +23,15 @@ A native macOS player for local video files that looks and handles like a YouTub
 
 ## Features
 
-- **YouTube watch-page layout**: dark theme, YouTube-style control bar, title and file details under the player.
-- **Up next list**: every mp4 / mov / m4v in the current folder, sorted like Finder ("Episode 2" before "Episode 10"), with thumbnails, durations and red watched bars. Hidden by default; toggle it from the title bar and drag the divider to resize it.
+- **YouTube watch-page layout**: dark theme, YouTube-style control bar with previous / play / next buttons, title and file details under the player.
+- **Up next list**: every mp4 / mov / m4v in the current folder, sorted like Finder ("Episode 2" before "Episode 10"), with thumbnails, durations and red watched bars. A Recent tab lists the other videos you played lately, from any folder. Right-click any video, or click the folder name under the player, to show it in Finder. Hidden by default; toggle it from the title bar and drag the divider to resize it.
 - **Playback speed** from 0.75× to 2×: presets plus a Custom slider in 0.05 steps. Pitch is preserved, and the speed is remembered across videos and launches.
 - **Resume where you left off**. A video with less than 10 seconds left counts as watched and starts over next time.
 - **Autoplay** with YouTube's 5-second "Up next" countdown card.
 - Hover preview on the progress bar, theater mode, full screen and picture-in-picture.
 - The window height follows its content, so there is no empty space under the player.
 - Opens files by drag and drop, ⌘O, or from Finder (LocalTube registers as an "Open With" app for mp4, mov and m4v).
+- **Recent** on the start screen: the last 8 videos you played, with thumbnails and watched bars. Click one to resume it; right-click to remove it, or Clear all. Clearing never forgets where you left off. While watching, the Home button in the title bar takes you back to it.
 
 ## Keyboard shortcuts
 

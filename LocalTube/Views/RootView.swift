@@ -19,6 +19,12 @@ struct RootView: View {
         .navigationTitle(model.title ?? "LocalTube")
         .toolbar {
             if model.url != nil && !model.isFullscreen {
+                ToolbarItem(placement: .navigation) {
+                    Button { model.goHome() } label: {
+                        Label("Home", systemImage: "house")
+                    }
+                    .help("Home")
+                }
                 ToolbarItem(placement: .primaryAction) {
                     let visible = model.showsPlaylist && !model.isTheater
                     Toggle(isOn: Binding(get: { visible }, set: { _ in model.togglePlaylist() })) {
@@ -51,18 +57,100 @@ struct EmptyStateView: View {
     @Environment(PlayerModel.self) private var model
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "play.rectangle.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(Theme.red)
-            Text("Drop a video here or press ⌘O")
-                .font(.system(size: 20, weight: .semibold))
-            Text("mp4 · mov · m4v")
-                .foregroundStyle(Theme.secondaryText)
-            Button("Open…") { model.showOpenPanel() }
-                .controlSize(.large)
+        let recent = model.progress.recent(limit: RecentGrid.limit)
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 48) {
+                    VStack(spacing: 16) {
+                        Image(systemName: "play.rectangle.fill")
+                            .font(.system(size: 72))
+                            .foregroundStyle(Theme.red)
+                        Text("Drop a video here or press ⌘O")
+                            .font(.system(size: 20, weight: .semibold))
+                        Text("mp4 · mov · m4v")
+                            .foregroundStyle(Theme.secondaryText)
+                        Button("Open…") { model.showOpenPanel() }
+                            .controlSize(.large)
+                    }
+                    if !recent.isEmpty { RecentGrid(urls: recent) }
+                }
+                .padding(32)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height)
+            }
+            .scrollIndicators(.never)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Videos played most recently, newest first; click one to pick up where it was left off.
+@MainActor
+struct RecentGrid: View {
+    static let limit = 8
+
+    @Environment(PlayerModel.self) private var model
+    let urls: [URL]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Recent")
+                    .font(.system(size: 18, weight: .bold))
+                Spacer()
+                Button("Clear all") { model.progress.clearRecent() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.secondaryText)
+                    .focusable(false) // keyboard navigation is on; Space must not clear the list
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16, alignment: .top), count: 4),
+                      spacing: 16) {
+                ForEach(urls, id: \.self) { RecentCard(url: $0) }
+            }
+        }
+        .frame(maxWidth: 1100)
+    }
+}
+
+@MainActor
+struct RecentCard: View {
+    @Environment(PlayerModel.self) private var model
+    let url: URL
+    @State private var info: VideoInfo?
+    @State private var hovering = false
+
+    var body: some View {
+        let entry = model.progress.entry(for: url)
+        VStack(alignment: .leading, spacing: 4) {
+            VideoThumbnail(info: info, watched: ProgressStore.fraction(for: entry))
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .padding(.bottom, 4)
+            Text(url.deletingPathExtension().lastPathComponent)
+                .font(.system(size: 14, weight: .medium))
+                .lineLimit(1)
+            Text(details(lastPlayed: entry?.lastPlayed))
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.secondaryText)
+                .lineLimit(1)
+        }
+        .padding(6)
+        .background(RoundedRectangle(cornerRadius: 10).fill(hovering ? Theme.highlight : .clear))
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .onTapGesture { model.open(url) }
+        .contextMenu {
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            Button("Remove from Recent") { model.progress.removeFromRecent(url) }
+        }
+        .task(id: url) { info = await VideoInfoCache.shared.info(for: url) }
+    }
+
+    /// "2 hours ago · Folder"
+    private func details(lastPlayed: Date?) -> String {
+        var parts: [String] = []
+        if let lastPlayed {
+            parts.append(lastPlayed.formatted(Date.RelativeFormatStyle(presentation: .named, locale: Theme.english)))
+        }
+        parts.append(url.deletingLastPathComponent().lastPathComponent)
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -153,26 +241,42 @@ struct SplitDivider: View {
     }
 }
 
-/// Title + one line of file facts under the player.
+/// Title + one line of file facts under the player. The folder name shows the video in Finder,
+/// the way YouTube's channel name opens the channel.
 @MainActor
 struct VideoInfoView: View {
     @Environment(PlayerModel.self) private var model
+    @State private var hoveringFolder = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(model.title ?? "")
                 .font(.system(size: 20, weight: .bold))
                 .lineLimit(2)
-            Text(details)
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.secondaryText)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                if let url = model.url {
+                    Button(url.deletingLastPathComponent().lastPathComponent) {
+                        NSWorkspace.shared.activateFileViewerSelecting([url])
+                    }
+                    .buttonStyle(.plain)
+                    .focusable(false)
+                    .underline(hoveringFolder)
+                    .foregroundStyle(hoveringFolder ? Color.white : Theme.secondaryText)
+                    .onHover { hoveringFolder = $0 }
+                    .help("Show in Finder")
+                    Text(" · ")
+                }
+                Text(details)
+            }
+            .font(.system(size: 13))
+            .foregroundStyle(Theme.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Everything after the folder name.
     private var details: String {
         var parts: [String] = []
-        if let folder = model.url?.deletingLastPathComponent().lastPathComponent { parts.append(folder) }
         parts.append(TimeFormat.string(model.duration))
         if let info = model.info {
             if let modified = info.modified {
