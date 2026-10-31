@@ -20,6 +20,13 @@ struct PlayerView: View {
                 ReplayButton()
             }
 
+            if let position = model.resumedFrom {
+                ResumeNotice(position: position)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 12)
+                    .padding(.bottom, 60)
+            }
+
             ControlBar()
                 .opacity(model.showsControls ? 1 : 0)
                 .allowsHitTesting(model.showsControls)
@@ -240,6 +247,29 @@ struct OSDView: View {
             .padding(.vertical, 8)
             .background(RoundedRectangle(cornerRadius: 6).fill(.black.opacity(0.6)))
             .padding(.top, 40)
+    }
+}
+
+/// "Resumed from 12:34 · Start over", shown for a few seconds after picking up where you left off.
+@MainActor
+struct ResumeNotice: View {
+    @Environment(PlayerModel.self) private var model
+    let position: Double
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("Resumed from \(TimeFormat.string(position))")
+                .foregroundStyle(.white.opacity(0.8))
+            Button("Start over") { model.startOver() }
+                .buttonStyle(.plain)
+                .focusable(false)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white)
+        }
+        .font(.system(size: 13))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.8)))
     }
 }
 

@@ -26,6 +26,7 @@ final class PlayerModel {
 
     static let shared = PlayerModel()
     static let countdownSeconds = 5.0
+    static let resumeNoticeSeconds = 6.0
 
     let player = AVPlayer()
     let progress = ProgressStore(defaults: .standard)
@@ -51,6 +52,8 @@ final class PlayerModel {
     private(set) var countdownStart: Date?
     private(set) var controlsVisible = true
     private(set) var osd: OSD?
+    /// Where playback picked up, while the "Resumed from … · Start over" notice is up.
+    private(set) var resumedFrom: Double?
     var isSettingsOpen = false
     var unsupportedFile: URL?
 
@@ -65,6 +68,7 @@ final class PlayerModel {
     @ObservationIgnored private var countdownTask: Task<Void, Never>?
     @ObservationIgnored private var hideControlsTask: Task<Void, Never>?
     @ObservationIgnored private var osdTask: Task<Void, Never>?
+    @ObservationIgnored private var resumeTask: Task<Void, Never>?
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
     @ObservationIgnored private let defaults = UserDefaults.standard
 
@@ -119,7 +123,8 @@ final class PlayerModel {
         if panel.runModal() == .OK, let url = panel.url { open(url) }
     }
 
-    func open(_ rawURL: URL) {
+    /// `fromStart` skips the saved position.
+    func open(_ rawURL: URL, fromStart: Bool = false) {
         let url = rawURL.resolvingSymlinksInPath()
         let token = UUID()
         loadToken = token
@@ -138,11 +143,11 @@ final class PlayerModel {
                 unsupportedFile = url
                 return
             }
-            await load(url, asset: asset, duration: duration, token: token)
+            await load(url, asset: asset, duration: duration, fromStart: fromStart, token: token)
         }
     }
 
-    private func load(_ url: URL, asset: AVURLAsset, duration: Double, token: UUID) async {
+    private func load(_ url: URL, asset: AVURLAsset, duration: Double, fromStart: Bool, token: UUID) async {
         saveProgress()
         cancelCountdown()
         self.url = url
@@ -157,7 +162,8 @@ final class PlayerModel {
         let item = AVPlayerItem(asset: asset)
         item.audioTimePitchAlgorithm = .spectral
         player.replaceCurrentItem(with: item)
-        let start = ProgressStore.startPosition(for: progress.entry(for: url))
+        hideResumeNotice()
+        let start = fromStart ? 0 : ProgressStore.startPosition(for: progress.entry(for: url))
         currentTime = start
         if start > 0 {
             _ = await player.seek(to: CMTime(seconds: start, preferredTimescale: 600),
@@ -165,6 +171,7 @@ final class PlayerModel {
         }
         guard loadToken == token else { return }
         play()
+        if start > 0 { showResumeNotice(from: start) }
 
         let info = await VideoInfoCache.shared.info(for: url)
         if loadToken == token { self.info = info }
@@ -267,11 +274,34 @@ final class PlayerModel {
         if let previous = previousURL { open(previous) }
     }
 
+    /// Back to 0:00. Keeps playing, or plays again if the video had ended.
+    func startOver() {
+        hideResumeNotice()
+        if hasEnded { play() } else { seek(to: 0) }
+    }
+
+    private func showResumeNotice(from position: Double) {
+        resumedFrom = position
+        resumeTask?.cancel()
+        resumeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.resumeNoticeSeconds))
+            guard !Task.isCancelled else { return }
+            self?.resumedFrom = nil
+        }
+    }
+
+    private func hideResumeNotice() {
+        resumeTask?.cancel()
+        resumeTask = nil
+        resumedFrom = nil
+    }
+
     /// Back to the start screen. The video is saved and closed, so it tops Recent.
     func goHome() {
         guard url != nil else { return }
         pause()
         cancelCountdown()
+        hideResumeNotice()
         if pip?.isPictureInPictureActive == true { pip?.stopPictureInPicture() }
         loadToken = UUID() // a video still opening must not show up afterwards
         player.replaceCurrentItem(with: nil)

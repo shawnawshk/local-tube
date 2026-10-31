@@ -136,10 +136,7 @@ struct RecentCard: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { model.open(url) }
-        .contextMenu {
-            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-            Button("Remove from Recent") { model.progress.removeFromRecent(url) }
-        }
+        .contextMenu { VideoMenu(url: url, inRecent: true) }
         .task(id: url) { info = await VideoInfoCache.shared.info(for: url) }
     }
 

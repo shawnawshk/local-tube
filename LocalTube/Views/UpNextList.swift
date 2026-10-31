@@ -39,10 +39,7 @@ struct UpNextList: View {
                         ForEach(Array(urls), id: \.self) { url in
                             UpNextRow(url: url, isCurrent: false, isRecent: true)
                                 .onTapGesture { model.open(url) }
-                                .contextMenu {
-                                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                                    Button("Remove from Recent") { model.progress.removeFromRecent(url) }
-                                }
+                                .contextMenu { VideoMenu(url: url, inRecent: true) }
                         }
                     }
                 }
@@ -63,9 +60,7 @@ struct UpNextList: View {
                             UpNextRow(url: url, isCurrent: url == model.url)
                                 .id(url)
                                 .onTapGesture { model.open(url) }
-                                .contextMenu {
-                                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                                }
+                                .contextMenu { VideoMenu(url: url) }
                         }
                     }
                 }
@@ -75,6 +70,22 @@ struct UpNextList: View {
                     withAnimation { proxy.scrollTo(url, anchor: .center) }
                 }
             }
+        }
+    }
+}
+
+/// Right-click menu for a video in Recent or the Up next list.
+@MainActor
+struct VideoMenu: View {
+    @Environment(PlayerModel.self) private var model
+    let url: URL
+    var inRecent = false
+
+    var body: some View {
+        Button("Play from beginning") { model.open(url, fromStart: true) }
+        Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        if inRecent {
+            Button("Remove from Recent") { model.progress.removeFromRecent(url) }
         }
     }
 }

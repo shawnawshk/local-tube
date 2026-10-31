@@ -19,6 +19,7 @@ struct ControlBar: View {
                 BarButton(symbol: "forward.end.fill", help: "Next (SHIFT+n)") { model.playNext() }
                     .disabled(model.nextURL == nil)
                     .opacity(model.nextURL == nil ? 0.4 : 1)
+                BarButton(symbol: "gobackward", help: "Start over (0)") { model.startOver() }
                 VolumeControl()
                 Text("\(TimeFormat.string(model.currentTime)) / \(TimeFormat.string(model.duration))")
                     .font(.system(size: 13).monospacedDigit())
