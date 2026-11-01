@@ -2,13 +2,15 @@ import AppKit
 import SwiftUI
 
 /// Right-hand list with two tabs. "Current folder": every supported video in the current folder,
-/// current one highlighted. "Recent": the other videos played lately, newest first.
+/// current one highlighted. "Recent": the playing video, then the others played lately, newest first.
 /// Autoplay and next / previous always follow the folder.
 @MainActor
 struct UpNextList: View {
     static let recentLimit = 20
 
     @Environment(PlayerModel.self) private var model
+    /// Recent videos other than the playing one that are still on disk; filled off the main thread.
+    @State private var recentOthers: [URL] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -24,27 +26,24 @@ struct UpNextList: View {
         }
     }
 
+    /// The playing video is pinned on top: its play date only updates every few seconds.
     private var recentList: some View {
-        let urls = model.progress.recent(limit: Self.recentLimit + 1)
-            .filter { $0.path != model.url?.path }
-            .prefix(Self.recentLimit)
-        return Group {
-            if urls.isEmpty {
-                Text("Videos you play will show up here.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.secondaryText)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 4) {
-                        ForEach(Array(urls), id: \.self) { url in
-                            UpNextRow(url: url, isCurrent: false, isRecent: true)
-                                .onTapGesture { model.open(url) }
-                                .contextMenu { VideoMenu(url: url, inRecent: true) }
-                        }
-                    }
+        let candidates = model.progress.recentlyPlayed().filter { $0.path != model.url?.path }
+        // Until the check reruns, recentOthers can still hold a video that just started playing.
+        let urls = [model.url].compactMap { $0 } + recentOthers.filter { $0.path != model.url?.path }
+        return ScrollView {
+            LazyVStack(spacing: 4) {
+                ForEach(urls, id: \.self) { url in
+                    let isCurrent = url == model.url
+                    UpNextRow(url: url, isCurrent: isCurrent, isRecent: true)
+                        .onTapGesture { model.open(url) }
+                        .contextMenu { VideoMenu(url: url, canRemoveFromRecent: !isCurrent) }
                 }
-                .scrollIndicators(.never)
             }
+        }
+        .scrollIndicators(.never)
+        .task(id: candidates) {
+            recentOthers = await ProgressStore.existing(candidates, limit: Self.recentLimit - 1)
         }
     }
 
@@ -69,6 +68,7 @@ struct UpNextList: View {
                 .onChange(of: model.url) { _, url in
                     withAnimation { proxy.scrollTo(url, anchor: .center) }
                 }
+                .onChange(of: model.playlist) { proxy.scrollTo(model.url, anchor: .center) } // read after the url changes
             }
         }
     }
@@ -79,12 +79,12 @@ struct UpNextList: View {
 struct VideoMenu: View {
     @Environment(PlayerModel.self) private var model
     let url: URL
-    var inRecent = false
+    var canRemoveFromRecent = false
 
     var body: some View {
         Button("Play from beginning") { model.open(url, fromStart: true) }
         Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-        if inRecent {
+        if canRemoveFromRecent {
             Button("Remove from Recent") { model.progress.removeFromRecent(url) }
         }
     }
@@ -145,7 +145,7 @@ struct UpNextRow: View {
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.secondaryText)
                         .lineLimit(1)
-                    if let lastPlayed = model.progress.entry(for: url)?.lastPlayed {
+                    if !isCurrent, let lastPlayed = model.progress.entry(for: url)?.lastPlayed {
                         Text(Self.relative.localizedString(for: lastPlayed, relativeTo: Date()))
                             .font(.system(size: 12))
                             .foregroundStyle(Theme.secondaryText)

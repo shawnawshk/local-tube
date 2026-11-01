@@ -55,9 +55,10 @@ struct RootView: View {
 @MainActor
 struct EmptyStateView: View {
     @Environment(PlayerModel.self) private var model
+    @State private var recent: [URL] = []
 
     var body: some View {
-        let recent = model.progress.recent(limit: RecentGrid.limit)
+        let candidates = model.progress.recentlyPlayed()
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 48) {
@@ -79,6 +80,7 @@ struct EmptyStateView: View {
             }
             .scrollIndicators(.never)
         }
+        .task(id: candidates) { recent = await ProgressStore.existing(candidates, limit: RecentGrid.limit) }
     }
 }
 
@@ -136,7 +138,7 @@ struct RecentCard: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { model.open(url) }
-        .contextMenu { VideoMenu(url: url, inRecent: true) }
+        .contextMenu { VideoMenu(url: url, canRemoveFromRecent: true) }
         .task(id: url) { info = await VideoInfoCache.shared.info(for: url) }
     }
 

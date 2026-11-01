@@ -153,7 +153,14 @@ final class PlayerModel {
         self.url = url
         self.duration = duration
         fitWindow()
-        playlist = FolderPlaylist.videos(inFolderOf: url)
+        // Same folder (next / previous) keeps its list; another folder's list shows once it's read.
+        if playlist.first?.deletingLastPathComponent() != url.deletingLastPathComponent() { playlist = [] }
+        // Off the main thread and apart from playback: a folder access prompt holds it up until answered.
+        Task { [weak self] in
+            let playlist = await Task.detached { FolderPlaylist.videos(inFolderOf: url) }.value
+            guard let self, self.loadToken == token else { return }
+            self.playlist = playlist
+        }
         info = nil
         hasEnded = false
         isSettingsOpen = false

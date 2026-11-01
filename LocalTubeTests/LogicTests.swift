@@ -110,18 +110,21 @@ final class ProgressStoreTests: XCTestCase {
         defaults.set(Data(#"{"/videos/a.mp4":{"position":42,"duration":100}}"#.utf8), forKey: "progress")
         let store = ProgressStore(defaults: defaults)
         XCTAssert(store.entry(for: URL(fileURLWithPath: "/videos/a.mp4"))?.position == 42)
-        XCTAssert(store.recent(limit: 8).isEmpty)
+        XCTAssert(store.recentlyPlayed().isEmpty)
     }
 
-    func testRecentIsNewestFirstAndSkipsMissingFiles() throws {
+    func testRecentIsNewestFirstAndSkipsMissingFiles() async throws {
         let folder = try makeFolder(files: ["a.mp4", "b.mp4"])
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = makeStore()
         for name in ["a.mp4", "gone.mp4", "b.mp4"] {
             store.save(position: 1, duration: 100, for: folder.appendingPathComponent(name))
         }
-        XCTAssert(store.recent(limit: 8).map(\.lastPathComponent) == ["b.mp4", "a.mp4"])
-        XCTAssert(store.recent(limit: 1).map(\.lastPathComponent) == ["b.mp4"])
+        XCTAssert(store.recentlyPlayed().map(\.lastPathComponent) == ["b.mp4", "gone.mp4", "a.mp4"])
+        let existing = await ProgressStore.existing(store.recentlyPlayed(), limit: 8)
+        XCTAssert(existing.map(\.lastPathComponent) == ["b.mp4", "a.mp4"])
+        let first = await ProgressStore.existing(store.recentlyPlayed(), limit: 1)
+        XCTAssert(first.map(\.lastPathComponent) == ["b.mp4"])
     }
 
     func testRemovingFromRecentKeepsProgress() throws {
@@ -133,15 +136,15 @@ final class ProgressStoreTests: XCTestCase {
         store.save(position: 40, duration: 100, for: b)
 
         store.removeFromRecent(a)
-        XCTAssert(store.recent(limit: 8).map(\.lastPathComponent) == ["b.mp4"])
+        XCTAssert(store.recentlyPlayed().map(\.lastPathComponent) == ["b.mp4"])
         XCTAssert(store.entry(for: a)?.position == 30)
 
         store.clearRecent()
-        XCTAssert(store.recent(limit: 8).isEmpty)
+        XCTAssert(store.recentlyPlayed().isEmpty)
         XCTAssert(store.entry(for: b)?.position == 40)
 
         store.save(position: 50, duration: 100, for: a)
-        XCTAssert(store.recent(limit: 8).map(\.lastPathComponent) == ["a.mp4"])
+        XCTAssert(store.recentlyPlayed().map(\.lastPathComponent) == ["a.mp4"])
     }
 
     private func makeFolder(files: [String]) throws -> URL {

@@ -33,13 +33,19 @@ final class ProgressStore {
         persist()
     }
 
-    /// The most recently played videos, newest first. Files that were moved or deleted are left out.
-    func recent(limit: Int) -> [URL] {
-        let played = entries.compactMap { path, entry in entry.lastPlayed.map { (path, $0) } }
-        return Array(played.sorted { $0.1 > $1.1 }.lazy
-            .map { URL(fileURLWithPath: $0.0) }
-            .filter { FileManager.default.fileExists(atPath: $0.path) }
-            .prefix(limit))
+    /// Videos with a play date, newest first. Memory only; `existing` drops files that are gone.
+    func recentlyPlayed() -> [URL] {
+        entries.compactMap { path, entry in entry.lastPlayed.map { (path, $0) } }
+            .sorted { $0.1 > $1.1 }
+            .map { URL(fileURLWithPath: $0.0, isDirectory: false) } // isDirectory: no disk lookup
+    }
+
+    /// The first `limit` of `urls` still on disk. Off the main thread: while macOS asks for folder
+    /// access (every new build is a new app to it), file checks wait for the answer.
+    static func existing(_ urls: [URL], limit: Int) async -> [URL] {
+        await Task.detached {
+            Array(urls.lazy.filter { FileManager.default.fileExists(atPath: $0.path) }.prefix(limit))
+        }.value
     }
 
     /// Takes the video off Recent; its progress stays.
